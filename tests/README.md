@@ -3,7 +3,7 @@ high quality, our tests are run on every push by [Travis](https://travis-ci.org/
 
 Usage
 --------
-1. Review the configuration settings in phpunit.xml.dist. If customization is needed, copy to phpunit.xml and edit away.
+1. Review the configuration settings in tests/phpunit.xml.dist. If customization is needed, copy to phpunit.xml and edit away.
 1. Run unit tests: `unish.sh` or `cd tests && ..\vendor\phpunit`
 
 Advanced usage
@@ -16,11 +16,10 @@ Advanced usage
 Reuse by Drush Commandfiles
 -----------
 Drush commandfiles are encouraged to ship with PHPUnit test cases that
-extend Drush_UnitTestCase and Drush_CommandTestCase. In order to run
-the tests, you have to point to the [drush_testcase.inc](tests/drush_testcase.inc) file
-such as `phpunit --bootstrap=/path/to/drush/tests/drush_testcase.inc`.
-The devel project does exactly this -
-http://drupalcode.org/project/devel.git/blob/refs/heads/8.x-1.x:/drush/develDrushTest.php
+extend UnitUnishTestCase and CommandUnishTestCase. In order to run
+the tests, you have to point to the phpunit.xml file that used by Drush.
+The devel project has a wrapper script which demonstrates this -
+http://drupalcode.org/project/devel.git/blob/refs/heads/8.x-1.x:/run-tests-drush.sh
 
 Cache
 -----------

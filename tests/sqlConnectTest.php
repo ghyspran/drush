@@ -1,15 +1,16 @@
 <?php
 
+namespace Unish;
+
 /**
- * @file
- *   Tests sql-connect command
+ * Tests sql-connect command
  *
  *   Installs Drupal and checks that the given URL by sql-connect is correct.
  *
  * @group commands
  * @group sql
  */
-class SqlConnectCase extends Drush_CommandTestCase {
+class SqlConnectCase extends CommandUnishTestCase {
 
   function testSqlConnect() {
     $sites = $this->setUpDrupal(1, TRUE);
@@ -27,7 +28,7 @@ class SqlConnectCase extends Drush_CommandTestCase {
     $shell_options = "-e";
     $db_driver = $this->db_driver();
     if ($db_driver == 'mysql') {
-      $this->assertRegExp('/^mysql --database=[^\s]+ --host=[^\s]+ --user=[^\s]+ --password=.*$/', $output);
+      $this->assertRegExp('/^mysql --user=[^\s]+ --password=.* --database=[^\s]+ --host=[^\s]+$/', $output);
     }
     elseif ($db_driver == 'sqlite') {
       $this->assertContains('sqlite3', $output);

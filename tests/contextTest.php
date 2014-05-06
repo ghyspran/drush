@@ -10,11 +10,13 @@
 *  @group base
 */
 
-class contextCase extends Drush_CommandTestCase {
+namespace Unish;
+
+class contextCase extends CommandUnishTestCase {
 
   function setUpPaths() {
     $this->log("webroot: ".$this->webroot()."\n");
-    $this->env = key($this->sites);
+    $this->env = key($this->getSites());
     $this->site = $this->webroot() . '/sites/' . $this->env;
     $this->home = UNISH_SANDBOX . '/home';
     $this->paths = array(
@@ -68,7 +70,7 @@ EOD;
         ),
       ),
     );
-    $contents = unish_file_aliases($aliases);
+    $contents = $this->unish_file_aliases($aliases);
     $return = file_put_contents($path, $contents);
   }
 

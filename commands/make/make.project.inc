@@ -165,7 +165,7 @@ class DrushMakeProject {
     }
     $this->made = TRUE;
 
-    if (is_null($this->download_location)) {
+    if (!isset($this->download_location)) {
       $this->download_location = $this->findDownloadLocation();
     }
     if ($this->download() === FALSE) {
@@ -547,6 +547,10 @@ class DrushMakeProject {
       $result = FALSE;
     }
     else {
+      // Inherit the translations specified in the extender makefile.
+      if (!empty($this->translations)) {
+        $info['translations'] = $this->translations;
+      }
       // Strip out any modules that have already been processed before this.
       foreach ($this->manifest as $name) {
         unset($info['projects'][$name]);

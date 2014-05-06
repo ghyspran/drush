@@ -68,7 +68,7 @@ function drush_check_module_dependencies($modules, $module_info) {
         $current_version = $module_info[$dependency_name]->info['version'];
         $current_version = str_replace(drush_get_drupal_core_compatibility() . '-', '', $current_version);
         $incompatibility = drupal_check_incompatibility($v, $current_version);
-        if (!is_null($incompatibility)) {
+        if (isset($incompatibility)) {
           $status[$key]['error'] = array(
             'code' => 'DRUSH_PM_ENABLE_DEPENDENCY_VERSION_MISMATCH',
             'message' => dt('Module !module cannot be enabled because it depends on !dependency !required_version but !current_version is available', array('!module' => $module, '!dependency' => $dependency_name, '!required_version' => $incompatibility, '!current_version' => $current_version))
@@ -267,12 +267,10 @@ function drush_queue_get_queues() {
     $queues = module_invoke_all('cron_queue_info');
     drupal_alter('cron_queue_info', $queues);
     foreach($queues as $name => $queue) {
-      $queues[$name] = array(
-        'worker callback' => $queue['worker callback'],
-        'cron' => array(
-          'time' => $queue['time'],
-        ),
-      );
+      $queues[$name]['worker callback'] = $queue['worker callback'];
+      if (isset($queue['time'])) {
+        $queues[$name]['cron']['time'] = $queue['time'];
+      }
     }
   }
   return $queues;
@@ -292,4 +290,40 @@ function _drush_file_public_path() {
 
 function _drush_file_private_path() {
   return variable_get('file_private_path', FALSE);
+}
+
+/**
+ * Gets the extension name.
+ *
+ * @param $info
+ *   The extension info.
+ * @return string
+ *   The extension name.
+ */
+function _drush_extension_get_name($info) {
+  return $info->name;
+}
+
+/**
+ * Gets the extension type.
+ *
+ * @param $info
+ *   The extension info.
+ * @return string
+ *   The extension type.
+ */
+function _drush_extension_get_type($info) {
+  return $info->type;
+}
+
+/**
+ * Gets the extension path.
+ *
+ * @param $info
+ *   The extension info.
+ * @return string
+ *   The extension path.
+ */
+function _drush_extension_get_path($info) {
+  return dirname($info->filename);
 }

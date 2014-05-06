@@ -3,9 +3,11 @@
  * @file
  *   Specific functions for a drupal 8+ environment.
  *   drush_include_engine() magically includes either this file
- *   or environment_X.inc depending on which version of drupal drush
+ *   or environment_X.inc depending on which version of drupal Drush
  *   is called from.
  */
+
+use Drupal\Core\Site\Settings;
 
 /**
  * Get complete information for all available modules.
@@ -19,7 +21,6 @@ function drush_get_modules($include_hidden = TRUE) {
   $modules = system_rebuild_module_data();
 
   foreach ($modules as $key => $module) {
-    $module->type = 'module';
     if ((!$include_hidden) && (isset($module->info['hidden']))) {
       unset($modules[$key]);
     }
@@ -71,7 +72,7 @@ function drush_check_module_dependencies($modules, $module_info) {
         $current_version = $module_info[$dependency_name]->info['version'];
         $current_version = str_replace(drush_get_drupal_core_compatibility() . '-', '', $current_version);
         $incompatibility = drupal_check_incompatibility($v, $current_version);
-        if (!is_null($incompatibility)) {
+        if (isset($incompatibility)) {
           $status[$key]['error'] = array(
             'code' => 'DRUSH_PM_ENABLE_DEPENDENCY_VERSION_MISMATCH',
             'message' => dt('Module !module cannot be enabled because it depends on !dependency !required_version but !current_version is available', array('!module' => $module, '!dependency' => $dependency_name, '!required_version' => $incompatibility, '!current_version' => $current_version))
@@ -99,7 +100,8 @@ function drush_check_module_dependencies($modules, $module_info) {
 function drush_module_dependents($modules, $module_info) {
   $dependents = array();
   foreach ($modules as $module) {
-    $dependents = array_merge($dependents, drupal_map_assoc(array_keys($module_info[$module]->required_by)));
+    $keys = array_keys($module_info[$module]->required_by);
+    $dependents = array_merge($dependents, array_combine($keys, $keys));
   }
 
   return array_unique($dependents);
@@ -181,7 +183,6 @@ function drush_module_uninstall($modules) {
 function drush_get_themes($include_hidden = TRUE) {
   $themes = system_rebuild_theme_data();
   foreach ($themes as $key => $theme) {
-    $theme->type = 'theme';
     if (!$include_hidden) {
       if (isset($theme->info['hidden'])) {
         unset($themes[$key]);
@@ -274,10 +275,46 @@ function _drush_theme_admin() {
 }
 
 function _drush_file_public_path() {
-  return settings()->get('file_public_path', conf_path() . '/files');
+  return Settings::get('file_public_path', conf_path() . '/files');
 }
 
 function _drush_file_private_path() {
   return \Drupal::config('system.file')->get('path.private');
+}
+
+/**
+ * Gets the extension name.
+ *
+ * @param $info
+ *   The extension info.
+ * @return string
+ *   The extension name.
+ */
+function _drush_extension_get_name($info) {
+  return $info->getName();
+}
+
+/**
+ * Gets the extension type.
+ *
+ * @param $info
+ *   The extension info.
+ * @return string
+ *   The extension type.
+ */
+function _drush_extension_get_type($info) {
+  return $info->getType();
+}
+
+/**
+ * Gets the extension path.
+ *
+ * @param $info
+ *   The extension info.
+ * @return string
+ *   The extension path.
+ */
+function _drush_extension_get_path($info) {
+  return $info->getPath();
 }
 

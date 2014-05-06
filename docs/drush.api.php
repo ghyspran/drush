@@ -160,7 +160,7 @@ function drush_hook_pre_COMMAND() {
  *
  * @return mixed|false
  *   The return value will be passed along to the caller if --backend option is
- *   present. A boolean FALSE indicates failure and rollback will be intitated.
+ *   present. A boolean FALSE indicates failure and rollback will be inititated.
  *
  * @see drush_hook_COMMAND_rollback()
  * @see drush_hook_pre_COMMAND_rollback()
@@ -190,18 +190,6 @@ function drush_hook_post_COMMAND() {
  * Take action after any command is run.
  */
 function hook_drush_exit() {
-
-}
-
-/**
- * Take action when Drush loads.
- *
- * A commandfile may choose to decline to load for the current bootstrap
- * level by returning FALSE. This hook must be placed in MODULE.drush.load.inc.
- *
- * @see drush_commandfile_list()
- */
-function hook_drush_load() {
 
 }
 

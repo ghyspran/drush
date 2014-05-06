@@ -351,7 +351,7 @@ function drush_sitealias_alias_path($alias_path_context = NULL) {
   // If the user defined the root of a drupal site, then also
   // look for alias files in /drush and /sites/all/drush.
   $drupal_root = drush_get_context('DRUSH_SELECTED_DRUPAL_ROOT');
-  if (isset($drupal_root)) {
+  if (!empty($drupal_root)) {
     $site_paths[] = $drupal_root . '/drush';
     $site_paths[] = $drupal_root . '/sites/all/drush';
   }
@@ -1693,7 +1693,7 @@ function drush_sitealias_set_alias_context($site_alias_settings, $prefix = '') {
   // and 'remote-user' if 'remote-host' is actually the local machine.
   // This prevents drush from using the remote dispatch mechanism (the command
   // is just run directly on the local machine, bootstrapping to the specified alias)
-  elseif (array_key_exists('remote-host', $site_alias_settings) && drush_is_local_host($site_alias_settings['remote-host'])) {
+  elseif (array_key_exists('remote-host', $site_alias_settings) && array_key_exists('#check-local', $site_alias_settings) && drush_is_local_host($site_alias_settings['remote-host'])) {
     $skip_list[] = 'remote-host';
     $skip_list[] = 'remote-user';
   }
@@ -1807,8 +1807,7 @@ function drush_sitealias_evaluate_paths_in_options($option_string) {
  *   the scope of this one call).
  * @param local_only
  *   If TRUE, force an error if the provided path points to a remote
- *   machine.  This is used in core-cli, for example, to insure that you
- *   do not 'cd' to a remote machine.
+ *   machine.
  * @param os
  *   This should be the local system os, unless evaluate path is
  *   being called for rsync, in which case it should be "CWRSYNC"
@@ -2058,21 +2057,21 @@ function drush_sitealias_site_get() {
 }
 
 /**
- * Return the filename for the file tht stores the DRUPAL_SITE variable.
+ * Returns the filename for the file that stores the DRUPAL_SITE variable.
  *
- * @return string
- *   Full path to tmp file.
+ * @param string $filename_prefix
+ *   An arbitrary string to prefix the filename with.
+ *
+ * @return string|false
+ *   Returns the full path to temp file if possible, or FALSE if not.
  */
 function drush_sitealias_get_envar_filename($filename_prefix = 'drush-drupal-site-') {
-  $tmp = getenv('TMPDIR') ? getenv('TMPDIR') : '/tmp/';
-
-  if (function_exists('posix_getppid') && is_dir($tmp) && is_writable($tmp)) {
-    $dir = $tmp . '/drush-env';
-    if (drush_mkdir($dir, FALSE)) {
-      return $dir . '/' . $filename_prefix . posix_getppid();
-    }
+  if (!function_exists('posix_getppid')) {
+    return FALSE;
   }
-  return FALSE;
+
+  $tmp = getenv('TMPDIR') ? getenv('TMPDIR') : '/tmp/';
+  return "{$tmp}/drush-env/{$filename_prefix}" . posix_getppid();
 }
 
 /**

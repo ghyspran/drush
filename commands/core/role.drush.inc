@@ -195,7 +195,7 @@ function drush_role_perm($action, $rid, $permission = NULL) {
  * DrushRole class suitable for the current version of Drupal.
  */
 function drush_role_get_class($role_name = DRUPAL_ANONYMOUS_RID) {
-  return drush_get_class('DrushRole', array($role_name));
+  return drush_get_class('Drush\Role\Role', func_get_args());
 }
 
 /**
@@ -223,7 +223,7 @@ function drush_role_list($rid = '') {
     }
   }
   else {
-    drush_hide_output_fields(array('rid', 'role'));
+    drush_hide_output_fields(array('rid', 'label'));
     $role = drush_role_get_class($rid);
     if (!$role) {
       return FALSE;

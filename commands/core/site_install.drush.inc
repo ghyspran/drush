@@ -86,18 +86,25 @@ function drush_core_site_install_validate() {
  * Perform setup tasks for installation.
  */
 function drush_core_pre_site_install($profile = NULL) {
-  if (!$db_spec = _drush_sql_get_db_spec()) {
+  $sql = drush_sql_get_class();
+  if (!$db_spec = $sql->db_spec()) {
     drush_set_error(dt('Could not determine database connection parameters. Pass --db-url option.'));
     return;
   }
-  $default_sites_subdir = drush_get_context('DRUSH_DRUPAL_SITE', 'default');
-  $sites_subdir = drush_get_option('sites-subdir', $default_sites_subdir);
 
-  $conf_path = "sites/$sites_subdir";
-  $files = "$conf_path/files";
+  $alias_record = drush_sitealias_get_record('@self');
+  $sites_subdir = drush_sitealias_local_site_path($alias_record);
+  // Override with sites-subdir if specified.
+  if ($dir = drush_get_option('sites-subdir')) {
+    $sites_subdir = "sites/$dir";
+  }
+  $conf_path = $sites_subdir;
+  // Handle the case where someuse uses --variables to set the file public path. Won't work on D8+.
+  $files = !empty($GLOBALS['conf']['files_public_path']) ? $GLOBALS['conf']['files_public_path'] : "$conf_path/files";
   $settingsfile = "$conf_path/settings.php";
   $sitesfile = "sites/sites.php";
-  $sitesfile_write = drush_drupal_major_version() >= 8 && !file_exists($sitesfile) && $sites_subdir != 'default';
+  $default = $alias_record['root'] . '/sites/default';
+  $sitesfile_write = drush_drupal_major_version() >= 8 && $conf_path != $default && !file_exists($sitesfile);
   
   if (!file_exists($settingsfile)) {
     $msg[] = dt('create a @settingsfile file', array('@settingsfile' => $settingsfile));
@@ -108,7 +115,7 @@ function drush_core_pre_site_install($profile = NULL) {
   if (drush_drupal_major_version() >= 8) {
     $msg[] = dt('empty any Config directories');
   }
-  if (drush_sql_db_exists($db_spec)) {
+  if ($sql->db_exists()) {
     $msg[] = dt("DROP all tables in your '@db' database.", array('@db' => $db_spec['database']));
   }
   else {
@@ -162,18 +169,17 @@ function drush_core_pre_site_install($profile = NULL) {
     }
   }
 
-  // The Drupal 6 installer needs to bootstrap up to the specified site.
   // We need to be at least at DRUSH_BOOTSTRAP_DRUPAL_SITE to select the site uri to install to
   define('MAINTENANCE_MODE', 'install');
   if (drush_drupal_major_version() == 6) {
+    // The Drupal 6 installer needs to bootstrap up to the specified site.
     drush_bootstrap(DRUSH_BOOTSTRAP_DRUPAL_CONFIGURATION);
   }
-  elseif ($sites_subdir != 'default') {
+  else {
     drush_bootstrap(DRUSH_BOOTSTRAP_DRUPAL_SITE);
   }
 
-  // Empty or create the DB as needed.
-  drush_sql_empty_db($db_spec);
+  $sql->drop_or_create($db_spec);
 
   if (drush_drupal_major_version() >= 8) {
     // Empty out any existing config directories.

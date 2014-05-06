@@ -395,14 +395,6 @@ function _drush_bootstrap_drush_validate() {
     return $return;
   }
 
-  if (drush_environment_lib() === FALSE) {
-    return FALSE;
-  }
-
-  if (drush_environment_table_lib() === FALSE) {
-    return FALSE;
-  }
-
   return TRUE;
 }
 
@@ -526,7 +518,7 @@ function _drush_bootstrap_drush() {
 }
 
 function _drush_bootstrap_output_prepare() {
-  $backend = drush_set_context('DRUSH_BACKEND', drush_get_option('backend'));
+  $backend = drush_get_context('DRUSH_BACKEND');
 
   // Pipe implies quiet.
   $quiet = drush_set_context('DRUSH_QUIET', drush_get_option(array('quiet', 'pipe')));
@@ -612,9 +604,10 @@ function _drush_bootstrap_base_environment() {
   drush_set_context('DRUSH_SITE_WIDE_CONFIGURATION', $site_wide_configuration_dir);
   drush_set_context('DRUSH_SITE_WIDE_COMMANDFILES', $site_wide_commandfile_dir);
   $alias_path[] = dirname(__FILE__) . '/..';
-  if(!is_null(drush_server_home())) {
-    $alias_path[] = drush_server_home() . '/.drush';
-    drush_set_context('DRUSH_PER_USER_CONFIGURATION', drush_server_home() . '/.drush');
+  $server_home = drush_server_home();
+  if (isset($server_home)) {
+    $alias_path[] = $server_home . '/.drush';
+    drush_set_context('DRUSH_PER_USER_CONFIGURATION', $server_home . '/.drush');
   }
 }
 
@@ -622,11 +615,12 @@ function _drush_bootstrap_global_options() {
   // Debug implies verbose
   drush_set_context('DRUSH_VERBOSE',     drush_get_option(array('verbose', 'debug'), FALSE));
   drush_set_context('DRUSH_DEBUG', drush_get_option('debug'));
+  drush_set_context('DRUSH_SIMULATE',    drush_get_option('simulate', FALSE));
+  drush_set_context('DRUSH_BACKEND', drush_get_option('backend'));
 
   // Backend implies affirmative unless negative is explicitly specified
   drush_set_context('DRUSH_NEGATIVE',    drush_get_option('no', FALSE));
   drush_set_context('DRUSH_AFFIRMATIVE', drush_get_option(array('yes', 'pipe'), FALSE) || (drush_get_context('DRUSH_BACKEND') && !drush_get_context('DRUSH_NEGATIVE')));
-  drush_set_context('DRUSH_SIMULATE',    drush_get_option('simulate', FALSE));
 
   // Suppress colored logging if --nocolor option is explicitly given or if
   // terminal does not support it.
@@ -853,60 +847,12 @@ function _drush_bootstrap_drupal_configuration() {
     $override[$name] = $value;
   }
   $conf = is_array($conf) ? array_merge($conf, $override) : $conf;
-
-  // Populate the DRUSH_DB_CREDENTIALS with the fields loaded from the configuration.
-  $creds = array();
-  switch (drush_drupal_major_version()) {
-     case 6:
-       if (!empty($GLOBALS['db_url'])) {
-         $url = $GLOBALS['db_url'];
-         if (is_array($url)) {
-           $url = $url['default'];
-         }
-         $parts = parse_url($url);
-         $parts += array('pass' => '', 'port' => '');
-         $creds['driver'] = $parts['scheme'];
-         $creds['user'] = urldecode($parts['user']);
-         $creds['host'] = $parts['host'];
-         $creds['port'] = $parts['port'];
-         $creds['pass'] = urldecode($parts['pass']);
-         $creds['name'] = trim($parts['path'], '/');
-       }
-       break;
-     case 7:
-     default:
-       if (!empty($GLOBALS['databases']['default']['default'])) {
-         $conn = $GLOBALS['databases']['default']['default'];
-         // Fill in defaults to prevent notices.
-         $conn += array(
-           'username' => NULL,
-           'host' => NULL,
-           'port' => NULL,
-           'password' => NULL,
-           'database' => NULL,
-           'unix_socket' => NULL,
-         );
-         $creds['driver'] = $conn['driver'];
-         $creds['user'] = $conn['username'];
-         $creds['unix_socket'] = $conn['unix_socket'];
-         $creds['host'] = $conn['host'];
-         $creds['port'] = $conn['port'];
-         $creds['name'] = $conn['database'];
-         $creds['pass'] = $conn['password'];
-         if(isset($conn['pdo'])) {
-             $creds['pdo'] = $conn['pdo'];
-         } else { $creds['pdo'] = null; }
-       }
-       break;
-  }
-
-  drush_set_context('DRUSH_DB_CREDENTIALS', $creds);
 }
 
 /**
  * Validate the DRUSH_BOOTSTRAP_DRUPAL_DATABASE phase
  *
- * Attempt to making a working database connection using the
+ * Attempt to make a working database connection using the
  * database credentials that were loaded during the previous
  * phase.
  */
@@ -987,7 +933,7 @@ function _drush_bootstrap_drupal_login() {
 function drush_bootstrap_value($context, $value = null) {
   $values =& drush_get_context('DRUSH_BOOTSTRAP_VALUES', array());
 
-  if (!is_null($value)) {
+  if (isset($value)) {
     $values[$context] = $value;
   }
 
@@ -999,7 +945,7 @@ function drush_bootstrap_value($context, $value = null) {
 }
 
 /**
- * Prepare drush for bootstrap
+ * Prepare Drush for bootstrap
  *
  * All pre-flight checks and includes necessary to begin the bootstrap
  * process.
@@ -1011,6 +957,15 @@ function drush_bootstrap_value($context, $value = null) {
  */
 function drush_bootstrap_prepare() {
   define('DRUSH_BASE_PATH', dirname(dirname(__FILE__)));
+  $local_vendor_path = DRUSH_BASE_PATH . '/vendor/autoload.php';
+  $global_vendor_path = DRUSH_BASE_PATH . '/../../../vendor/autoload.php';
+
+  // Check for a local composer install or a global composer install. Vendor dirs are in different spots).
+  if ((!@include $local_vendor_path) && (!@include $global_vendor_path)) {
+    $msg = "Unable to load autoload.php. Drush now requires Composer in order to install its depedencies and autoload classes. Please see README.md\n";
+    fwrite(STDERR, $msg);
+    return FALSE;
+  }
 
   require_once DRUSH_BASE_PATH . '/includes/environment.inc';
   require_once DRUSH_BASE_PATH . '/includes/command.inc';
@@ -1034,7 +989,7 @@ function drush_bootstrap_prepare() {
 
   // Check supported version of PHP.
   // Note: If this is adjusted, check other code that compares
-  // PHP_VERSION, such as runserver/runserver.drush.inc, and also
+  // PHP_VERSION, such as drush_json_encode(), runserver/runserver.drush.inc, and also
   // adjust _drush_environment_check_php_ini() and the php_prohibited_options
   // list in the drush script.  See http://drupal.org/node/1748228
   define('DRUSH_MINIMUM_PHP', '5.3.0');
@@ -1133,6 +1088,42 @@ function drush_shutdown() {
   // This way drush_return_status() will always be the last shutdown function (unless other shutdown functions register shutdown functions...)
   // and won't prevent other registered shutdown functions (IE from numerous cron methods) from running by calling exit() before they get a chance.
   register_shutdown_function('drush_return_status');
+}
+
+/**
+ * Shutdown function to save code coverage data.
+ */
+function drush_coverage_shutdown() {
+  if ($file_name = drush_get_context('DRUSH_CODE_COVERAGE', FALSE)) {
+    $data = xdebug_get_code_coverage();
+    xdebug_stop_code_coverage();
+
+    // If coverage dump file contains anything, merge in the old data before
+    // saving. This happens if the current drush command invoked another drush
+    // command.
+    if (file_exists($file_name) && $content = file_get_contents($file_name)) {
+      $merge_data = unserialize($content);
+      if (is_array($merge_data)) {
+        foreach ($merge_data as $file => $lines) {
+          if (!isset($data[$file])) {
+            $data[$file] = $lines;
+          }
+          else {
+            foreach ($lines as $num => $executed) {
+              if (!isset($data[$file][$num])) {
+                $data[$file][$num] = $executed;
+              }
+              else {
+                $data[$file][$num] = ($executed == 1 ? $executed : $data[$file][$num]);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    file_put_contents($file_name, serialize($data));
+  }
 }
 
 function drush_return_status() {

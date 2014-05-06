@@ -289,12 +289,10 @@ function drush_queue_get_queues() {
     $queues = module_invoke_all('cron_queue_info');
     drupal_alter('cron_queue_info', $queues);
     foreach($queues as $name => $queue) {
-      $queues[$name] = array(
-        'worker callback' => $queue['worker callback'],
-        'cron' => array(
-          'time' => $queue['time'],
-        ),
-      );
+      $queues[$name]['worker callback'] = $queue['worker callback'];
+      if (isset($queue['time'])) {
+        $queues[$name]['cron']['time'] = $queue['time'];
+      }
     }
   }
   return $queues;
@@ -316,4 +314,40 @@ function _drush_file_public_path() {
 
 function _drush_file_private_path() {
   // @todo
+}
+
+/**
+ * Gets the extension name.
+ *
+ * @param $info
+ *   The extension info.
+ * @return string
+ *   The extension name.
+ */
+function _drush_extension_get_name($info) {
+  return $info->name;
+}
+
+/**
+ * Gets the extension type.
+ *
+ * @param $info
+ *   The extension info.
+ * @return string
+ *   The extension type.
+ */
+function _drush_extension_get_type($info) {
+  return $info->type;
+}
+
+/**
+ * Gets the extension path.
+ *
+ * @param $info
+ *   The extension info.
+ * @return string
+ *   The extension path.
+ */
+function _drush_extension_get_path($info) {
+  return dirname($info->filename);
 }
